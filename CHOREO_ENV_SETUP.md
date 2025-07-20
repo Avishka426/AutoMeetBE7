@@ -10,11 +10,23 @@ mongoDbUrl = mongodb+srv://USERNAME:PASSWORD@your-cluster.cb3avmr.mongodb.net/?r
 dbName = automeet
 ```
 
-**Important for Choreo SSL Issues:**
-If you're getting SSL "internal_error" messages like in your logs, try these connection string variations:
-1. `mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/?retryWrites=true&w=majority&ssl=false`
-2. `mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/?retryWrites=true&w=majority&tls=false`
-3. `mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/?retryWrites=true&w=majority` (without SSL params)
+**Critical for Choreo SSL Issues:**
+Your logs show `SSLException: Received fatal alert: internal_error` on all MongoDB Atlas shards. This is a known issue with Choreo's Java environment. **Try these connection strings in order**:
+
+**Option 1 (Recommended):** Force disable SSL
+```
+mongoDbUrl = mongodb+srv://USERNAME:PASSWORD@your-cluster.cb3avmr.mongodb.net/?retryWrites=true&w=majority&ssl=false&tls=false
+```
+
+**Option 2:** Use non-SRV connection (if Option 1 fails)
+```
+mongoDbUrl = mongodb://USERNAME:PASSWORD@ac-nppqaa3-shard-00-00.cb3avmr.mongodb.net:27017,ac-nppqaa3-shard-00-01.cb3avmr.mongodb.net:27017,ac-nppqaa3-shard-00-02.cb3avmr.mongodb.net:27017/?ssl=false&replicaSet=atlas-xxxxxx-shard-0&authSource=admin&retryWrites=true&w=majority
+```
+
+**Option 3:** Minimal connection string
+```
+mongoDbUrl = mongodb+srv://USERNAME:PASSWORD@your-cluster.cb3avmr.mongodb.net/automeet?retryWrites=true&w=majority
+```
 
 ### Authentication & Security
 ```
@@ -60,6 +72,10 @@ hfApiKey = your-hugging-face-api-key
 1. Go to your MongoDB Atlas dashboard
 2. Navigate to Database → Connect → Connect your application
 3. Copy the connection string and replace username/password with your credentials
+4. **For replica set connection (Option 2):** 
+   - Click "View Details" on your cluster
+   - Note the replica set name (usually `atlas-xxxxxx-shard-0`)
+   - Use the individual shard addresses shown in your error logs
 
 ### Google OAuth
 1. Go to Google Cloud Console
@@ -88,21 +104,31 @@ openssl rand -hex 128
 ## Troubleshooting
 
 ### MongoDB SSL Connection Errors
-If you see errors like `SSLException: Received fatal alert: internal_error`:
+If you see errors like `SSLException: Received fatal alert: internal_error` in Choreo logs:
 
-1. **Try Different SSL Settings**: Use one of these connection string formats:
+**Your Error Pattern:**
+```
+SSLException: Received fatal alert: internal_error
+servers=[{address=ac-nppqaa3-shard-00-02.cb3avmr.mongodb.net:27017, type=UNKNOWN, state=CONNECTING}]
+```
+
+**Solution Steps:**
+1. **First, try Option 1 connection string** with both SSL and TLS disabled:
    ```
-   mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority&ssl=false
-   mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority&tls=false
-   mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+   mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority&ssl=false&tls=false
    ```
 
-2. **Check MongoDB Atlas Settings**:
+2. **If that fails, use direct replica set connection** (Option 2):
+   ```
+   mongodb://username:password@ac-nppqaa3-shard-00-00.cb3avmr.mongodb.net:27017,ac-nppqaa3-shard-00-01.cb3avmr.mongodb.net:27017,ac-nppqaa3-shard-00-02.cb3avmr.mongodb.net:27017/?ssl=false&replicaSet=atlas-xxxxxx-shard-0&authSource=admin&retryWrites=true&w=majority
+   ```
+
+3. **Check MongoDB Atlas Settings**:
    - Go to Network Access in MongoDB Atlas
    - Add `0.0.0.0/0` to allow all IPs (for testing)
    - Ensure your cluster supports the driver version
 
-3. **Verify Credentials**:
+4. **Verify Credentials**:
    - Double-check username and password in connection string
    - Ensure the database user has proper permissions
 
@@ -113,3 +139,16 @@ If you still see MongoDB connection issues:
 3. Check Choreo logs for specific SSL/TLS error details
 4. Consider using MongoDB Atlas connection string troubleshooter
 5. Test the connection string locally first
+
+### Quick Connection Test
+To verify your connection string works:
+1. **Local Test**: Try connecting with a MongoDB client tool using the same connection string
+2. **Check Choreo Environment Variables**: Ensure the `mongoDbUrl` is correctly set in Choreo's "Configs & Secrets"
+3. **Monitor Logs**: Look for the "MongoDB client initialized successfully" message in Choreo logs
+4. **Connection Timeout**: If you see 30-second timeouts, it's usually an SSL/network issue
+
+### Log Patterns to Watch For
+- ✅ **Success**: `MongoDB client initialized successfully`
+- ❌ **SSL Error**: `SSLException: Received fatal alert: internal_error`
+- ❌ **Auth Error**: `Authentication failed`
+- ❌ **Network Error**: `Timed out while waiting for a server`
