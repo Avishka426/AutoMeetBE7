@@ -6,9 +6,15 @@ For your Ballerina application to work properly in Choreo, you need to configure
 
 ### MongoDB Configuration
 ```
-mongoDbUrl = mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/?retryWrites=true&w=majority&appName=yourapp&ssl=true
+mongoDbUrl = mongodb+srv://USERNAME:PASSWORD@your-cluster.cb3avmr.mongodb.net/?retryWrites=true&w=majority&ssl=false&authSource=admin
 dbName = automeet
 ```
+
+**Important for Choreo SSL Issues:**
+If you're getting SSL "internal_error" messages like in your logs, try these connection string variations:
+1. `mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/?retryWrites=true&w=majority&ssl=false`
+2. `mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/?retryWrites=true&w=majority&tls=false`
+3. `mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/?retryWrites=true&w=majority` (without SSL params)
 
 ### Authentication & Security
 ```
@@ -81,8 +87,29 @@ openssl rand -hex 128
 
 ## Troubleshooting
 
+### MongoDB SSL Connection Errors
+If you see errors like `SSLException: Received fatal alert: internal_error`:
+
+1. **Try Different SSL Settings**: Use one of these connection string formats:
+   ```
+   mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority&ssl=false
+   mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority&tls=false
+   mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+   ```
+
+2. **Check MongoDB Atlas Settings**:
+   - Go to Network Access in MongoDB Atlas
+   - Add `0.0.0.0/0` to allow all IPs (for testing)
+   - Ensure your cluster supports the driver version
+
+3. **Verify Credentials**:
+   - Double-check username and password in connection string
+   - Ensure the database user has proper permissions
+
+### General MongoDB Issues
 If you still see MongoDB connection issues:
 1. Check MongoDB Atlas network access settings
 2. Verify the connection string is correctly set as an environment variable
 3. Check Choreo logs for specific SSL/TLS error details
 4. Consider using MongoDB Atlas connection string troubleshooter
+5. Test the connection string locally first
