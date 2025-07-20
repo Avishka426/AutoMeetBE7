@@ -27,9 +27,19 @@ resource function post signup(http:Caller caller, http:Request req) returns erro
     // Log redacted payload for security (we'll omit the password entirely)
     log:printInfo("New signup request received for user: " + (signupPayload.username is string ? (check signupPayload.username).toString() : "unknown"));
     
-    // Extract all possible fields from the frontend payload
-    string username = check signupPayload.username.ensureType();
-    string password = check signupPayload.password.ensureType();
+    // Extract required fields safely with proper error handling
+    string username = "";
+    string password = "";
+    
+    // Check for username
+    if (signupPayload.username is string) {
+        username = check signupPayload.username.ensureType();
+    }
+    
+    // Check for password
+    if (signupPayload.password is string) {
+        password = check signupPayload.password.ensureType();
+    }
     
     // Handle the name field - we'll look for it in the payload, but it might be missing
     string name = "";
@@ -222,11 +232,14 @@ resource function post login(http:Caller caller, http:Request req) returns error
     // Generate JWT token 
     string token = check generateJwtToken(user);
     
-    // Get current time and device info
+    // Get current time and device info (for potential logging/audit)
     time:Utc utcNow = time:utcNow();
     string currentTime = time:utcToString(utcNow);
     string|http:HeaderNotFoundError userAgentResult = req.getHeader("User-Agent");
     string userAgent = userAgentResult is string ? userAgentResult : "Chrome Extension";
+    
+    // Log login info for security audit
+    log:printInfo("User logged in: " + user.username + " at " + currentTime + " using " + userAgent);
     
     // Send login welcome email asynchronously (non-blocking)
     // sendLoginWelcomeEmailAsync(user.username, user.name, currentTime, userAgent);

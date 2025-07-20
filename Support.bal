@@ -536,11 +536,12 @@ public function validateAndGetUsernameFromCookie(http:Request request) returns s
 
     // If no auth cookie found, check for Authorization header as fallback
     if token is () {
-        string authHeader = check request.getHeader("Authorization");
-
-        if authHeader.startsWith("Bearer ") {
-            token = authHeader.substring(7);
+        string|http:HeaderNotFoundError authHeaderResult = request.getHeader("Authorization");
+        
+        if authHeaderResult is string && authHeaderResult.startsWith("Bearer ") {
+            token = authHeaderResult.substring(7);
         } else {
+            // No valid authorization found
             log:printError("No authentication token found in cookies or headers");
             return ();
         }

@@ -2,7 +2,7 @@ import ballerinax/mongodb;
 import ballerina/log;
 
 // MongoDB client configuration - using configurable values from Config.toml
-public configurable string mongoDbUrl = "mongodb+srv://pabasara:20020706@mycluster.cb3avmr.mongodb.net/?retryWrites=true&w=majority&appName=mycluster";  // This will read from Config.toml
+public configurable string mongoDbUrl = "mongodb+srv://pabasara:20020706@mycluster.cb3avmr.mongodb.net/?retryWrites=true&w=majority&appName=mycluster&ssl=true";  // Simplified SSL config for Choreo
 public configurable string dbName = "automeet";      // This will read from Config.toml
 
 // MongoDB client
@@ -37,13 +37,17 @@ public mongodb:Collection availabilityNotificationStatusCollection = getCollecti
 public mongodb:Collection externalUserMappingCollection = getCollectionRef("externalUserMappings");
 public final mongodb:Collection aiReportCollection = getCollectionRef("aiReports");
 
-// Initialize MongoDB client - handles the error internally
+// Initialize MongoDB client - handles the error internally with proper config
 function initMongoDbClient() returns mongodb:Client {
     mongodb:Client|error dbclient = new ({
-        connection: mongoDbUrl
+        connection: mongoDbUrl,
+        options: {
+            retryWrites: true
+        }
     });
     
     if dbclient is error {
+        log:printError("Error occurred while initializing the MongoDB client.", dbclient);
         panic error("Failed to initialize MongoDB client: " + dbclient.message());
     }
     
